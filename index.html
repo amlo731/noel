@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Découverte - Salon de Massage</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .title {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .game-area {
+            position: relative;
+            max-width: 800px;
+            margin: 0 auto;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .background-image {
+            width: 100%;
+            height: 512px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .grid-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 2px;
+        }
+
+        .grid-cell {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255,255,255,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .grid-cell:hover {
+            transform: scale(0.95);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+        }
+
+        .grid-cell.revealed {
+            background: transparent;
+            cursor: default;
+            animation: revealCell 0.8s ease-out forwards;
+        }
+
+        .grid-cell.revealed:hover {
+            transform: none;
+        }
+
+        .grid-cell.failed {
+            background: #2d3436;
+            cursor: not-allowed;
+            border: 2px solid rgba(0,0,0,0.5);
+        }
+
+        .grid-cell.failed:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        @keyframes revealCell {
+            0% {
+                background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+                background: rgba(255,255,255,0.8);
+            }
+            100% {
+                background: transparent;
+                transform: scale(1);
+            }
+        }
+
+        .cell-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            position: relative;
+            z-index: 2;
+        }
+
+        .cell-decoration {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.2)"/><circle cx="80" cy="30" r="1.5" fill="rgba(255,255,255,0.3)"/><circle cx="60" cy="70" r="2.5" fill="rgba(255,255,255,0.1)"/><circle cx="30" cy="80" r="1" fill="rgba(255,255,255,0.2)"/></svg>');
+            z-index: 1;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: white;
+            margin: 10% auto;
+            padding: 40px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .question-title {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .question-text {
+            font-size: 1.3em;
+            margin-bottom: 30px;
+            line-height: 1.6;
+            color: #555;
+        }
+
+        .answer-options {
+            display: grid;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .answer-btn {
+            padding: 15px 25px;
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(116, 185, 255, 0.3);
+        }
+
+        .answer-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(116, 185, 255, 0.4);
+        }
+
+        .answer-btn.correct {
+            background: linear-gradient(135deg, #00b894, #00a085);
+            animation: correctAnswer 0.6s ease;
+        }
+
+        .answer-btn.incorrect {
+            background: linear-gradient(135deg, #fd79a8, #e84393);
+            animation: incorrectAnswer 0.6s ease;
+        }
+
+        @keyframes correctAnswer {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes incorrectAnswer {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .close-btn {
+            background: #ddd;
+            color: #666;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background: #ccc;
+        }
+
+        .progress {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 1.2em;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .celebration {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            backdrop-filter: blur(5px);
+            z-index: 1001;
+            overflow-y: auto;
+        }
+
+        .celebration-content {
+            background: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        .celebration h2 {
+            color: #00b894;
+            font-size: 2em;
+            margin-bottom: 15px;
+        }
+
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background: #ff6b6b;
+            z-index: 999;
+            animation: confettiFall 3s linear forwards;
+        }
+
+        @keyframes confettiFall {
+            0% {
+                opacity: 1;
+                transform: translateY(-100vh) rotate(0deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(100vh) rotate(720deg);
+            }
+        }
+
+        .instructions {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 0 10px 10px 0;
+        }
+
+        .instructions h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .instructions p {
+            color: #666;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">🌿 Quiz Découverte - Salon de Massage 💆‍♀️</h1>
+        
+        <div class="instructions">
+            <h3>🎯 Comment jouer :</h3>
+            <p>Cliquez sur les cases numérotées pour répondre aux questions. Chaque bonne réponse révèle une partie de l'image. Découvrez l'image complète en répondant correctement aux 12 questions !</p>
+            <p style="margin-top: 10px; color: #e74c3c; font-weight: bold;">⚠️ ATTENTION : Vous n'avez qu'UNE SEULE chance par question ! Si vous vous trompez, la case deviendra noire et vous ne pourrez plus y accéder.</p>
+            <p style="margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #ffd89b, #19547b); color: white; border-radius: 10px; font-weight: bold;">
+                🎁 DÉFI SPÉCIAL : Il n'est pas obligatoire de répondre aux 12 questions, mais si vous localisez exactement l'emplacement du panneau publicitaire de Zen Attitude 59 (indiquez les deux rues qui forment l'intersection), une surprise exceptionnelle sera offerte par Mme Suh !<br>
+                📧 Envoyez votre réponse par mail à : <a href="mailto:zensuh59@gmail.com" style="color: #ffd700; text-decoration: underline;">zensuh59@gmail.com</a>
+            </p>
+        </div>
+        
+        <div class="game-area">
+            <img src="salon-photo.jpg" alt="Photo du salon de massage" class="background-image">
+            
+            <div class="grid-overlay" id="gridOverlay">
+                <!-- Les 12 cases seront générées par JavaScript -->
+            </div>
+        </div>
+
+        <div class="progress" id="progress">
+            Progression : 0/12 questions réussies
+        </div>
+    </div>
+
+    <!-- Modal pour les questions -->
+    <div id="questionModal" class="modal">
+        <div class="modal-content">
+            <h2 class="question-title" id="questionTitle">Question</h2>
+            <p class="question-text" id="questionText"></p>
+            <div class="answer-options" id="answerOptions">
+                <!-- Les réponses seront ajoutées par JavaScript -->
+            </div>
+            <button class="close-btn" onclick="closeModal()">Fermer</button>
+        </div>
+    </div>
+
+    <!-- Écran de victoire -->
+    <div id="celebration" class="celebration" onclick="closeCelebrationOnBackdrop(event)">
+        <div class="celebration-content">
+            <h2>🎉 Félicitations ! 🎉</h2>
+            <p style="font-size: 1.2em; margin-bottom: 15px;">Vous avez découvert toute l'image !</p>
+            <p style="color: #667eea; margin-bottom: 20px;">Merci d'avoir participé au quiz de notre salon de massage.</p>
+            
+            <div style="background: linear-gradient(135deg, #ffd89b, #19547b); padding: 15px; border-radius: 10px; margin-top: 20px; color: white;">
+                <p style="font-size: 1.1em; font-weight: bold; margin-bottom: 10px;">🎁 DÉFI SPÉCIAL</p>
+                <p style="margin-bottom: 8px; font-size: 0.95em;">Avez-vous réussi à localiser le panneau publicitaire de Zen Attitude 59 ?</p>
+                <p style="margin-bottom: 10px; font-size: 0.95em;">Si vous connaissez <strong>les deux rues qui forment l'intersection</strong>, envoyez votre réponse à :</p>
+                <p style="font-size: 1em; font-weight: bold;">
+                    📧 <a href="mailto:zensuh59@gmail.com" style="color: #ffd700; text-decoration: underline;">zensuh59@gmail.com</a>
+                </p>
+                <p style="margin-top: 10px; font-size: 0.9em;">Une surprise exceptionnelle vous attend ! ✨</p>
+            </div>
+            
+            <button onclick="closeCelebration()" style="margin-top: 20px; padding: 12px 30px; background: #667eea; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 1.1em; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3); transition: all 0.3s ease;">Fermer</button>
+        </div>
+    </div>
+
+    <script>
+        // ========================================
+        // QUESTIONS DU QUIZ - PERSONNALISABLES
+        // ========================================
+        const questions = [
+            {
+                question: "Quel massage n'est pas proposé chez Zen Attitude 59 ?",
+                answers: ["Massage relaxant et thérapeutique", "Massage évasion", "Massage sensoriel", "Massage ayurvédique"],
+                correct: 3,
+                explanation: "Zen Attitude ne propose pas de massage ayurvédique, mais tous les autres types de massages !",
+                image: "q1-quels-massages-proposes.jpg"
+            },
+            {
+                question: "Quelle est l'origine de Madame Suh ?",
+                answers: [
+                    "Japonaise", 
+                    "Chinoise", 
+                    "Coréenne du Sud", 
+                    "Thaïlandaise"
+                ],
+                correct: 2,
+                explanation: "Madame Suh est originaire de Corée du Sud.",
+                image: "q2-origine-suh.jpg"
+            },
+            {
+                question: "Comment se nomme et quelle est la signification du chat qui vous accompagne à chaque séance ?",
+                answers: [
+                    "Johwa qui signifie harmonie", 
+                    "Rohwa qui signifie bien-être", 
+                    "Wohwa qui signifie beauté", 
+                    "Pohwa qui signifie détente"
+                ],
+                correct: 0,
+                explanation: "Johwa signifie harmonie en coréen et vous accompagne lors de chaque séance.",
+                image: "q3-chat-johwa.jpg"
+            },
+            {
+                question: "Quelle est la date officielle de l'ouverture du cabinet de bien-être de Mme Suh ?",
+                answers: [
+                    "2 septembre 2022", 
+                    "10 octobre 2022", 
+                    "4 septembre 2023", 
+                    "24 octobre 2023"
+                ],
+                correct: 2,
+                explanation: "Le cabinet de bien-être de Mme Suh a ouvert officiellement le 4 septembre 2023.",
+                image: "q4-ouverture-cabinet.jpg"
+            },
+            {
+                question: "Dans quelle revue Mme Suh s'est-elle fait connaître ?",
+                answers: [
+                    "Le Cambrésien", 
+                    "Revue du Nord", 
+                    "La Voix du Nord", 
+                    "La Gazette du Nord"
+                ],
+                correct: 0,
+                explanation: "Mme Suh s'est fait connaître dans Le Cambrésien.",
+                image: "q5-suh-cambresien.jpg"
+            },
+            {
+                question: "Quelles sont les 5 étapes du massage sensoriel de Mme Suh ?",
+                answers: [
+                    "Respiration - Pression - Mobilisation - Relaxation - Tonification", 
+                    "Lecture - Acupuncture - Boost - Relaxant - Mise à Jour", 
+                    "Stimulation - Étirement - Apaisement - Drainage - Mise à jour", 
+                    "Tapotement - Effleurage – Stimulation - Respiration – Relaxation"
+                ],
+                correct: 1,
+                explanation: "Le massage sensoriel suit les 5 phases : Lecture - Acupuncture - Boost - Relaxant - Mise à Jour.",
+                image: "q6-etapes-massage-sensoriel.jpg"
+            },
+            {
+                question: "En quoi consiste la lecture du corps, spécialité de Mme Suh ?",
+                answers: [
+                    "Analyser les points de tension musculaire", 
+                    "Évaluer la posture et l'équilibre physique", 
+                    "Mesurer la circulation énergétique ou sanguine", 
+                    "Identifier les dysfonctionnements émotionnels somatiques"
+                ],
+                correct: 3,
+                explanation: "La lecture du corps permet d'identifier les dysfonctionnements émotionnels somatiques.",
+                image: "q7-lecture-du-corps.jpg"
+            },
+            {
+                question: "Où se situe le cabinet de massage de Mme Suh ?",
+                answers: [
+                    "12 Rue de la Paix, 59400 Cambrai", 
+                    "8 Boulevard des Capucins, 59400 Cambrai", 
+                    "6 Grande Rue François Fénelon, 59400 Cambrai", 
+                    "3 Place Aristide Briand, 59400 Cambrai"
+                ],
+                correct: 2,
+                explanation: "Le cabinet se situe au 6 Grande Rue François Fénelon, 59400 Cambrai.",
+                image: "q8-adresse-cabinet.jpg"
+            },
+            {
+                question: "Quel type d'interprétation Mme Suh n'exerce pas ?",
+                answers: [
+                    "Grain de beauté", 
+                    "Tatouage", 
+                    "Lithothérapie", 
+                    "Point d'acupuncture"
+                ],
+                correct: 2,
+                explanation: "Mme Suh n'exerce pas la lithothérapie.",
+                image: "q9-interpretation-suh.jpg"
+            },
+            {
+                question: "Quelle petite attention est offerte par Mme Suh à la fin d'une séance ?",
+                answers: [
+                    "Un thé et un biscuit", 
+                    "Une infusion et un carré de chocolat", 
+                    "Un jus et une madeleine", 
+                    "Un thé et un sablé au miel"
+                ],
+                correct: 0,
+                explanation: "Mme Suh offre un thé et un biscuit à la fin de chaque séance.",
+                image: "q10-the-biscuit.jpg"
+            },
+            {
+                question: "Quel était l'ancien métier de Mme Suh en France ?",
+                answers: [
+                    "Assistante administrative chez AXA", 
+                    "Vendeuse en boutique chez Sephora", 
+                    "Secrétaire comptable chez Carrefour", 
+                    "Distribution publicitaire chez Médiaposte"
+                ],
+                correct: 3,
+                explanation: "Mme Suh a travaillé dans la distribution publicitaire chez Médiaposte.",
+                image: "q11-ancien-metier-suh.jpg"
+            },
+            {
+                question: "Quel était le tout premier salon de Mme Suh et où a-t-il eu lieu ?",
+                answers: [
+                    "Salon du bien-être à Lille", 
+                    "Salon du mariage à Cambrai", 
+                    "Salon de la beauté à Valenciennes", 
+                    "Salon de la santé à Arras"
+                ],
+                correct: 1,
+                explanation: "Le tout premier salon de Mme Suh était le Salon du mariage à Cambrai.",
+                image: "q12-premier-salon-suh.jpg"
+            }
+        ];
+
+        // ========================================
+        // VARIABLES DU JEU
+        // ========================================
+        let revealedCells = 0;
+        let currentQuestion = null;
+        const STORAGE_KEY = 'zen_attitude_quiz_progress';
+
+        // ========================================
+        // SAUVEGARDER LA PROGRESSION
+        // ========================================
+        function saveProgress() {
+            const progress = {
+                revealedCells: revealedCells,
+                cellsState: []
+            };
+            
+            // Sauvegarder l'état de chaque case
+            for (let i = 1; i <= 12; i++) {
+                const cell = document.querySelector(`.grid-cell:nth-child(${i})`);
+                if (cell.classList.contains('revealed')) {
+                    progress.cellsState.push('revealed');
+                } else if (cell.classList.contains('failed')) {
+                    progress.cellsState.push('failed');
+                } else {
+                    progress.cellsState.push('pending');
+                }
+            }
+            
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+        }
+
+        // ========================================
+        // CHARGER LA PROGRESSION
+        // ========================================
+        function loadProgress() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (!saved) return null;
+            
+            try {
+                return JSON.parse(saved);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // ========================================
+        // RÉINITIALISER LA PROGRESSION
+        // ========================================
+        function clearProgress() {
+            localStorage.removeItem(STORAGE_KEY);
+        }
+
+        // ========================================
+        // INITIALISATION DU JEU
+        // ========================================
+        function initGame() {
+            const gridOverlay = document.getElementById('gridOverlay');
+            gridOverlay.innerHTML = '';
+            
+            // Charger la progression sauvegardée
+            const savedProgress = loadProgress();
+            
+            // Créer les 12 cases
+            for (let i = 1; i <= 12; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'grid-cell';
+                
+                // Ajouter l'image de fond si elle existe pour cette question
+                if (questions[i - 1].image) {
+                    const imageUrl = questions[i - 1].image;
+                    cell.style.backgroundColor = '#4a5fd8';
+                    cell.style.backgroundImage = `url('${imageUrl}')`;
+                    cell.style.backgroundSize = 'contain';
+                    cell.style.backgroundRepeat = 'no-repeat';
+                    cell.style.backgroundPosition = 'center';
+                    cell.innerHTML = `
+                        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 1;"></div>
+                        <div class="cell-decoration" style="z-index: 2;"></div>
+                        <span class="cell-number" style="z-index: 3;">${i}</span>
+                    `;
+                } else {
+                    cell.innerHTML = `
+                        <div class="cell-decoration"></div>
+                        <span class="cell-number">${i}</span>
+                    `;
+                }
+                
+                cell.onclick = () => openQuestion(i - 1);
+                gridOverlay.appendChild(cell);
+                
+                // Restaurer l'état de la case si sauvegardé
+                if (savedProgress && savedProgress.cellsState[i - 1]) {
+                    const state = savedProgress.cellsState[i - 1];
+                    if (state === 'revealed') {
+                        cell.classList.add('revealed');
+                        cell.innerHTML = '';
+                        cell.onclick = null;
+                    } else if (state === 'failed') {
+                        cell.classList.add('failed');
+                        cell.innerHTML = '<span style="color: #fff; font-size: 3em;">✖</span>';
+                        cell.onclick = null;
+                    }
+                }
+            }
+            
+            // Restaurer le compteur de cases révélées
+            if (savedProgress) {
+                revealedCells = savedProgress.revealedCells;
+            } else {
+                revealedCells = 0;
+            }
+            
+            updateProgress();
+        }
+
+        // ========================================
+        // OUVRIR UNE QUESTION
+        // ========================================
+        function openQuestion(questionIndex) {
+            const cell = document.querySelector(`.grid-cell:nth-child(${questionIndex + 1})`);
+            if (cell.classList.contains('revealed') || cell.classList.contains('failed')) {
+                return; // Case déjà révélée ou échouée
+            }
+
+            currentQuestion = questionIndex;
+            const q = questions[questionIndex];
+            
+            document.getElementById('questionTitle').textContent = `Question ${questionIndex + 1}`;
+            document.getElementById('questionText').textContent = q.question;
+            
+            const optionsContainer = document.getElementById('answerOptions');
+            optionsContainer.innerHTML = '';
+            
+            q.answers.forEach((answer, index) => {
+                const button = document.createElement('button');
+                button.className = 'answer-btn';
+                button.textContent = answer;
+                button.onclick = () => checkAnswer(index, button);
+                optionsContainer.appendChild(button);
+            });
+            
+            document.getElementById('questionModal').style.display = 'block';
+        }
+
+        // ========================================
+        // VÉRIFIER LA RÉPONSE
+        // ========================================
+        function checkAnswer(selectedIndex, button) {
+            const q = questions[currentQuestion];
+            const allButtons = document.querySelectorAll('.answer-btn');
+            
+            allButtons.forEach(btn => btn.style.pointerEvents = 'none');
+            
+            if (selectedIndex === q.correct) {
+                button.classList.add('correct');
+                
+                setTimeout(() => {
+                    revealCell(currentQuestion);
+                    closeModal();
+                    
+                    if (revealedCells === 12) {
+                        setTimeout(showCelebration, 500);
+                    }
+                }, 1000);
+                
+            } else {
+                button.classList.add('incorrect');
+                allButtons[q.correct].classList.add('correct');
+                
+                setTimeout(() => {
+                    markCellAsFailed(currentQuestion);
+                    closeModal();
+                }, 2000);
+            }
+        }
+
+        // ========================================
+        // RÉVÉLER UNE CASE
+        // ========================================
+        function revealCell(cellIndex) {
+            const cell = document.querySelector(`.grid-cell:nth-child(${cellIndex + 1})`);
+            cell.classList.add('revealed');
+            cell.innerHTML = '';
+            cell.onclick = null;
+            
+            revealedCells++;
+            updateProgress();
+            saveProgress();
+        }
+
+        // ========================================
+        // MARQUER UNE CASE COMME ÉCHOUÉE
+        // ========================================
+        function markCellAsFailed(cellIndex) {
+            const cell = document.querySelector(`.grid-cell:nth-child(${cellIndex + 1})`);
+            cell.classList.add('failed');
+            cell.innerHTML = '<span style="color: #fff; font-size: 3em;">✖</span>';
+            cell.onclick = null;
+            saveProgress();
+        }
+
+        // ========================================
+        // METTRE À JOUR LA PROGRESSION
+        // ========================================
+        function updateProgress() {
+            document.getElementById('progress').textContent = `Progression : ${revealedCells}/12 questions réussies`;
+        }
+
+        // ========================================
+        // FERMER LA MODAL
+        // ========================================
+        function closeModal() {
+            document.getElementById('questionModal').style.display = 'none';
+            setTimeout(() => {
+                document.querySelectorAll('.answer-btn').forEach(btn => {
+                    btn.style.pointerEvents = 'auto';
+                    btn.classList.remove('correct', 'incorrect');
+                });
+            }, 100);
+        }
+
+        // ========================================
+        // AFFICHER LES FÉLICITATIONS
+        // ========================================
+        function showCelebration() {
+            document.getElementById('celebration').style.display = 'block';
+            createConfetti();
+        }
+
+        // ========================================
+        // FERMER LA FENÊTRE DE FÉLICITATIONS
+        // ========================================
+        function closeCelebration() {
+            document.getElementById('celebration').style.display = 'none';
+        }
+
+        // ========================================
+        // FERMER EN CLIQUANT SUR LE FOND
+        // ========================================
+        function closeCelebrationOnBackdrop(event) {
+            if (event.target.id === 'celebration') {
+                closeCelebration();
+            }
+        }
+
+        // ========================================
+        // CRÉER LES CONFETTIS
+        // ========================================
+        function createConfetti() {
+            for (let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * window.innerWidth + 'px';
+                    confetti.style.backgroundColor = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7'][Math.floor(Math.random() * 5)];
+                    document.body.appendChild(confetti);
+                    
+                    setTimeout(() => confetti.remove(), 3000);
+                }, i * 50);
+            }
+        }
+
+        // ========================================
+        // RECOMMENCER LE JEU
+        // ========================================
+        function resetGame() {
+            // Fonction désactivée - pas de recommencement possible
+            return;
+        }
+
+        // ========================================
+        // ÉVÉNEMENTS
+        // ========================================
+        window.onclick = function(event) {
+            const modal = document.getElementById('questionModal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+
+        window.onload = function() {
+            initGame();
+        }
+    </script>
+</body>
+</html>
